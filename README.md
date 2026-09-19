@@ -1,351 +1,145 @@
-Customer Shopping Behavior Analysis
+# 🛍️ Customer Shopping Behavior Analysis
 
-Overview
+End-to-end analysis of retail customer behaviour using **Python (pandas)**, **PostgreSQL** and **Power BI**: from raw CSV to a cleaned, feature-engineered database table, SQL answers to business questions, and an interactive dashboard.
 
-This project analyzes customer shopping behavior using Python,
-PostgreSQL, and Power BI.
+---
 
-The workflow covers: - Loading and exploring customer shopping data with
-Python - Cleaning and preparing the dataset - Creating additional
-customer and purchase-related features - Loading the cleaned data into
-PostgreSQL - Writing SQL queries to answer business questions - Building
-an interactive Power BI dashboard - Presenting the analysis through a
-report and presentation
+## 📌 Overview
 
-The project is designed to turn raw customer transaction data into
-clear, business-focused insights about revenue, customers, products,
-shipping, subscriptions, and purchasing behavior.
+The project turns 3,900 customer transaction records into clear, business-focused insights about revenue, customer segments, products, shipping, subscriptions and payment behaviour.
 
-Dataset
+**Workflow**
 
-The project uses a customer shopping behavior dataset containing 3,900
-customer records and 18 original columns.
+```
+Raw CSV  →  Python / pandas  →  Cleaning & feature engineering  →  PostgreSQL  →  SQL analysis  →  Power BI dashboard
+```
 
-The original data includes:
+---
 
-Customer ID
+## 🗂 Repository Contents
 
-Age
+| File | Description |
+|---|---|
+| `customer_shopping_behavior.csv` | Raw dataset (3,900 rows × 18 columns) |
+| `customer_data_exploration.ipynb` | EDA, cleaning, feature engineering, load into PostgreSQL |
+| `customer_behaviour.sql` | 7 SQL queries answering business questions |
+| `customer behaviour.pbix` | Interactive Power BI dashboard |
 
-Gender
+---
 
-Item Purchased
+## 📊 Dataset
 
-Category
+**3,900 customers · 18 columns**
 
-Purchase Amount (USD)
+| Group | Columns |
+|---|---|
+| Customer | `Customer ID`, `Age`, `Gender`, `Location`, `Subscription Status`, `Previous Purchases`, `Frequency of Purchases` |
+| Purchase | `Item Purchased`, `Category`, `Purchase Amount (USD)`, `Size`, `Color`, `Season` |
+| Experience & payment | `Review Rating`, `Shipping Type`, `Discount Applied`, `Promo Code Used`, `Payment Method` |
 
-Location
+Categories: Clothing, Accessories, Footwear, Outerwear.
 
-Size
+---
 
-Color
+## 🧹 Data Preparation (Python)
 
-Season
+1. Loaded the CSV and inspected structure with `info()`, `describe()` and `dtypes`.
+2. Found **37 missing values in `Review Rating`** → filled with the **median rating of each product category**.
+3. Standardised column names (lower-case, underscores) and renamed `purchase_amount_(usd)` → `purchase_amount`.
+4. **Feature engineering**
+   - `age_group` – quartile-based bins via `pd.qcut`: `young_adult` (18–31), `adult` (32–44), `middle-aged` (45–57), `senior` (58–70).
+   - `purchase_frequency_rate` – purchase frequency converted to approximate days (Weekly = 7, Fortnightly/Bi-Weekly = 14, Monthly = 30, Quarterly/Every 3 Months = 90, Annually = 365).
+5. Verified that `Discount Applied` and `Promo Code Used` are identical for every row, then **dropped `promo_code_used`** as redundant.
+6. Loaded the cleaned DataFrame into a PostgreSQL table named `customer` using SQLAlchemy + psycopg2.
 
-Review Rating
+---
 
-Subscription Status
+## 🗄 SQL Analysis
 
-Shipping Type
+All queries are in [`customer_behaviour.sql`](customer_behaviour.sql). Results below were verified by reproducing each query on the cleaned data.
 
-Discount Applied
+| # | Business question | Result |
+|---|---|---|
+| 1 | Total revenue by gender | Male **$157,890** vs Female **$75,191** (total $233,081) |
+| 2 | Discounted customers who spent at or above the average purchase ($59.76) | **839** of the 1,677 customers who used a discount |
+| 3 | Top 5 products by average review rating | Gloves (3.86), Sandals (3.84), Boots (3.82), Hat (3.80), Skirt (3.78) |
+| 4 | Average purchase: Standard vs Express shipping | Express **$60.48** vs Standard **$58.46** |
+| 5 | Subscribers vs non-subscribers | Non-subscribers: 2,847 customers, avg $59.87, $170,436 revenue · Subscribers: 1,053 customers, avg $59.49, $62,645 revenue |
+| 6 | Customer segments (CTE + `CASE`) | Loyal **3,116** · Returning **701** · New **83** |
+| 7 | Revenue by age group | Young adult $62,143 · Middle-aged $59,197 · Adult $55,978 · Senior $55,763 |
 
-Promo Code Used
+**SQL techniques used:** aggregations (`SUM`, `AVG`, `COUNT`), `GROUP BY`, subqueries, CTEs (`WITH`), `CASE` expressions, `ROUND`, `ORDER BY` / `LIMIT`.
 
-Previous Purchases
+**Segmentation rules:** 1 previous purchase → `new` · 2–10 → `returning` · more than 10 → `loyal`.
 
-Payment Method
+---
 
-Frequency of Purchases
+## 📈 Power BI Dashboard
 
-Data Quality
+`customer behaviour.pbix` is a single-page interactive dashboard with:
 
-The initial inspection found 37 missing values in Review Rating.
-These values were filled using the median review rating within each
-product category.
+- **KPI cards:** Number of Customers, Average Purchase Amount, Average Review Rating
+- **Pie charts:** customers by subscription status, customers by payment method
+- **Column charts:** purchase amount by category, customer count by category
+- **Bar chart:** purchase amount by age group
+- **Slicers:** subscription status, gender, category, shipping type
 
-The project also checked Discount Applied against Promo Code Used.
-The values matched in the dataset, so Promo Code Used was removed as a
-redundant column.
+Slicers cross-filter every visual, so the whole page can be explored by customer attributes.
 
-Data Preparation with Python
+---
 
-Python and pandas were used for the initial data preparation.
+## 🔍 Key Takeaways
 
-Main steps
+- **Male customers generate about 68 % of revenue** ($157,890 of $233,081).
+- **Subscribing does not mean spending more:** average purchase is almost identical ($59.49 vs $59.87), and non-subscribers make up ~73 % of customers.
+- **Discounts don't only attract low-value orders:** about half (839 / 1,677) of discount users spent at or above the overall average.
+- **Express shipping** customers spend slightly more per order than Standard (+$2.02).
+- **Age groups contribute fairly evenly**, with young adults (18–31) the largest at ~27 % of revenue.
+- Most customers (~80 %) fall in the **loyal** segment under the current segmentation rules.
 
-Load the CSV dataset.
+---
 
-Inspect the structure using info(), describe(), and data types.
-
-Check missing values.
-
-Fill missing review ratings using category-level medians.
-
-Standardize column names by converting them to lowercase and
-replacing spaces with underscores.
-
-Rename purchase_amount_(usd) to purchase_amount.
-
-Create customer age groups using quartiles:
-
-young_adult
-
-adult
-
-middle-aged
-
-senior
-
-Convert purchase-frequency categories into an approximate number of
-days:
-
-Weekly → 7
-
-Fortnightly / Bi-Weekly → 14
-
-Monthly → 30
-
-Quarterly / Every 3 Months → 90
-
-Annually → 365
-
-Check whether Discount Applied and Promo Code Used contain the
-same information.
-
-Remove the redundant promo_code_used column.
-
-Load the cleaned DataFrame into PostgreSQL.
-
-SQL Analysis
-
-The cleaned data was loaded into a PostgreSQL table named customer.
-
-The SQL analysis answers the following business questions:
-
-1. Revenue by gender
-
-Calculate total purchase revenue generated by male and female customers.
-
-2. Discounted customers with above-average spending
-
-Identify customers who used a discount but still spent at or above the
-overall average purchase amount.
-
-3. Top products by average review rating
-
-Find the five products with the highest average customer review rating.
-
-4. Standard vs Express shipping
-
-Compare the average purchase amount for Standard and Express shipping.
-
-5. Subscriber vs non-subscriber behavior
-
-Compare subscribers and non-subscribers using: - Number of customers -
-Average purchase amount - Total revenue
-
-6. Customer segmentation
-
-Segment customers based on previous purchases: - New - Returning - Loyal
-
-The SQL uses a CTE (WITH) and CASE expression for this segmentation.
-
-7. Revenue by age group
-
-Calculate the total revenue contribution from each customer age group.
-
-Power BI Dashboard
-
-The cleaned customer data was used to build an interactive Power BI
-dashboard.
-
-The dashboard provides a visual view of customer behavior and includes
-analysis around areas such as:
-
-Customer counts
-
-Customer categories
-
-Revenue and purchasing behavior
-
-Subscription status
-
-Payment and shipping behavior
-
-Product/category performance
-
-Interactive filtering is used to explore customer behavior by attributes
-such as subscription status.
-
-Tools & Technologies
-
-Tool         Purpose
-
-Python       Data loading, exploration, and preparation
-Pandas       Data cleaning and feature engineering
-PostgreSQL   Database storage and SQL analysis
-SQL          Business-question analysis
-Power BI     Interactive dashboard and visualization
-Gamma        Presentation creation
-
-Project Workflow
-
-Raw CSV Dataset
-      ↓
-Python / Pandas
-      ↓
-Data Exploration
-      ↓
-Data Cleaning & Feature Engineering
-      ↓
-PostgreSQL
-      ↓
-SQL Business Analysis
-      ↓
-Power BI Dashboard
-      ↓
-Report & Presentation
-
-Project Files
-
-customer-behaviour-analysis/
-│
-├── customer_shopping_behavior.csv
-├── customer_data_exploration.ipynb
-├── customer_behaviour.sql
-├── customer_behaviour.pbix
-└── README.md
-
-How to Run
-
-1. Clone the repository
-
-git clone <your-repository-url>
-cd customer-behaviour-analysis
-
-2. Install Python dependencies
-
-pip install pandas sqlalchemy psycopg2-binary
-
-3. Run the Python notebook
-
-Open:
-
-customer_data_exploration.ipynb
-
-Make sure the CSV dataset is available in the expected location before
-running the notebook.
-
-4. Set up PostgreSQL
-
-Create a PostgreSQL database and update the connection details in the
-notebook:
-
-from sqlalchemy import create_engine
-
-username = "postgres"
-password = "YOUR_PASSWORD"
-host = "localhost"
-port = "5432"
-database = "customer"
-
-engine = create_engine(
-    f"postgresql+psycopg2://{username}:{password}@{host}:{port}/{database}"
-)
-
-Then run the notebook section that loads the cleaned DataFrame into the
-customer table.
-
-5. Run the SQL analysis
-
-Open:
-
-customer_behaviour.sql
-
-Run the queries in PostgreSQL/pgAdmin to reproduce the analysis.
-
-6. Open the Power BI dashboard
-
-Open:
-
-customer_behaviour.pbix
-
-Refresh the data source if required and interact with the dashboard
-filters.
-
-Key Skills Demonstrated
-
-Exploratory Data Analysis (EDA)
-
-Data cleaning
-
-Missing-value treatment
-
-Feature engineering
-
-Customer segmentation
-
-SQL aggregations
-
-CTEs and CASE statements
-
-PostgreSQL
-
-Python / Pandas
-
-Power BI dashboard development
-
-Business-oriented data analysis
-
-Data storytelling
-
-Business Questions Explored
-
-This project focuses on practical questions a data analyst could answer
-for a retail/e-commerce business:
-
-Which customer groups contribute the most revenue?
-
-How does spending differ between subscribers and non-subscribers?
-
-Do discounted customers still make high-value purchases?
-
-Which products receive the highest average ratings?
-
-How does shipping type relate to purchase value?
-
-How many customers fall into new, returning, and loyal segments?
-
-Which age groups contribute the most revenue?
-
-Results
-
-The analysis produces customer-level and aggregated views that can be
-explored through SQL and the Power BI dashboard.
-
-The project specifically analyzes: - Revenue by gender and age group -
-Subscriber versus non-subscriber spending - Discounted customers with
-high purchase amounts - Product review performance - Shipping-type
-purchase differences - Customer loyalty segments
-
-Numerical results can be reproduced directly by running the SQL queries
-in customer_behaviour.sql.
-
-Notes
-
-The age-group labels are created using quartiles rather than fixed
-business-defined age ranges. The purchase-frequency feature converts
-categorical frequencies into approximate day intervals for analysis.
-
-The SQL customer segmentation currently classifies: - 1 previous
-purchase → new - 2--10 previous purchases → returning - More than 10
-previous purchases → loyal
-
-Author
-
-Vishwa Narayanaswamy
-
-MSc Data Science
-University of Europe for Applied Sciences, Potsdam
+## 🛠 Tech Stack
+
+| Tool | Purpose |
+|---|---|
+| Python, pandas | Data loading, cleaning, feature engineering |
+| SQLAlchemy, psycopg2 | Connecting Python to PostgreSQL |
+| PostgreSQL / pgAdmin | Storage and SQL analysis |
+| Power BI | Interactive dashboard |
+
+---
+
+## 🚀 How to Run
+
+1. **Clone the repo**
+   ```bash
+   git clone https://github.com/vishwanarayanaswamy/customer_behaviour_analysis.git
+   cd customer_behaviour_analysis
+   ```
+2. **Install dependencies**
+   ```bash
+   pip install pandas sqlalchemy psycopg2-binary jupyter
+   ```
+3. **Create a PostgreSQL database** (e.g. `customer`) and set your own connection details in the notebook. Keep credentials out of version control, e.g. use an environment variable:
+   ```python
+   import os
+   from sqlalchemy import create_engine
+
+   engine = create_engine(
+       f"postgresql+psycopg2://postgres:{os.environ['PGPASSWORD']}@localhost:5432/customer"
+   )
+   ```
+4. **Run** `customer_data_exploration.ipynb` – this cleans the data and writes the `customer` table.
+5. **Run the queries** in `customer_behaviour.sql` in pgAdmin or `psql`.
+6. **Open** `customer behaviour.pbix` in Power BI Desktop and refresh the data source if needed.
+
+---
+
+---
+
+## 👤 Author
+
+**Vishwa Narayanaswamy**  
+MSc Data Science, University of Europe for Applied Sciences  
+GitHub: [@vishwanarayanaswamy](https://github.com/vishwanarayanaswamy)
